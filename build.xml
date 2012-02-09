@@ -1,0 +1,85 @@
+<project name="jackrabbit-rmi-servlet" basedir="." default="distr">
+
+	<property file="version.properties"/>
+	<property file="global.properties"/>
+	<property file="local.properties"/>
+	
+	<target name="/release" description="Use this option to produce release">
+		<property name="option.release" value="true" />
+	</target>
+	
+	<target name="default-version" unless="option.release">
+		<tstamp>
+			<format property="pubdate" pattern="yyyyMMddHHmmss"/>
+		</tstamp>
+		<property name="version.prefix" value="${target.version}-local-"/>
+		<property name="version" value="${version.prefix}${pubdate}"/>
+	</target>
+
+	<target name="release-version" if="option.release">
+		<property name="version" value="${target.version}"/>
+	</target>
+
+	<target name="set-version" depends="default-version, release-version">
+		<echo message="Build version set to ${version}"/>
+	</target>
+
+	<target name="clean" description="Removes all temporary directories">
+		<delete dir="${bin}" includeEmptyDirs="true" />
+		<delete dir="${build}" includeEmptyDirs="true" />
+		<delete dir="${distr}" includeEmptyDirs="true" />
+	</target>
+
+	<target name="init-classpath" depends="clean">
+		<path id="lib.classpath">
+			<fileset dir="${lib}">
+				<include name="*.jar" />
+			</fileset>
+		</path>
+		<path id="run.classpath">
+			<pathelement location="${project.classes.build}" />
+			<path refid="lib.classpath" />
+		</path>
+	</target>
+
+	<target name="prepare" depends="init-classpath">
+		<mkdir dir="${bin}"/>
+		<mkdir dir="${classes.build}"/>
+		<mkdir dir="${project.classes.build}"/>
+	</target>
+	
+	<target name="compile" depends="prepare">
+		<javac srcdir="${src}"
+			destdir="${project.classes.build}"
+			classpathref="lib.classpath"
+			sourcepath=""
+			source="${minimum.javaversion}"
+			target="${minimum.javaversion}"
+			debug="${debug.mode}"
+			encoding="UTF-8"
+			includeantruntime="no">
+		</javac>
+		<copy todir="${project.classes.build}" includeEmptyDirs="false">
+			<fileset dir="${src}">
+				<exclude name="**/*.java"/>
+			</fileset>
+		</copy>
+	</target>
+	
+	<target name="war" depends="set-version, compile" description="Create War files">
+		<echo message="version=${version}${line.separator}" file="${project.classes.build}/module.properties" append="true"/>
+		<echo message="date=${pubdate}${line.separator}" file="${project.classes.build}/module.properties" append="true"/>
+
+		<mkdir dir="${wars}" />
+
+		<war destfile="${wars}/${result.name}.${result.ext}" webxml="${webapp}/WEB-INF/web.xml">
+			<classes dir="${project.classes.build}"/>
+		</war>
+	</target>
+
+	<target name="distr" depends="war">
+		<mkdir dir="${distr}"/>
+		<mkdir dir="${distr}/war"/>
+		<copy file="${wars}/${result.name}.${result.ext}" tofile="${distr}/war/${result.name}-${version}.${result.ext}"/>
+	</target>
+</project>
