@@ -73,7 +73,6 @@ public class RmiPublicationServlet extends GenericServlet {
 			
 			if (rmiRegistry != null)
 				rmiRegistry.rebind(rmiServiceName, remoteRepository);
-//			Naming.rebind(rmiServiceName, remoteRepository);
 			
 			log(String.format("Remote repository registered on '%s'", rmiServiceName));
 		}
@@ -83,9 +82,6 @@ public class RmiPublicationServlet extends GenericServlet {
 		catch (RemoteException ex) {
 			log("Failed to create remote repository", ex);
 		}
-//		catch (MalformedURLException ex) {
-//			log(String.format("Bad URL format: %s", rmiServiceName), ex);
-//		}
 	}
 
 	private Registry getOrCreateRegistry(int rmiPortNumber) {
