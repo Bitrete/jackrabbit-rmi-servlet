@@ -11,22 +11,22 @@
 			<param-value>jcr/repository</param-value>
 			<description>Global repository name to search in JNDI context</description>
 		</init-param>
-		
 		<init-param>
 			<param-name>rmi-service-name</param-name>
-			<!--
-			<param-value>//localhost:1099/JackrabbitRMI</param-value>
-			-->
 			<param-value>JackrabbitRMI</param-value>
 			<description>Service name under which RemoteRepository instance is registered</description>
 		</init-param>
-		
 		<init-param>
-			<param-name>rmi-port</param-name>
+			<param-name>rmi-registry-port</param-name>
 			<param-value>1099</param-value>
+			<description>RMI port number on which RMI registry is created</description>
+		</init-param>
+		<init-param>
+			<param-name>repository-port</param-name>
+			<param-value>1100</param-value>
 			<description>RMI port number on which RemoteRepository is published</description>
 		</init-param>
-		<load-on-startup>2</load-on-startup>
+				<load-on-startup>2</load-on-startup>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>JackrabbitRmiPublisher</servlet-name>
