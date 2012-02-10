@@ -13,7 +13,9 @@ To solve this problem you need to write simple servlet which gets repository ref
 How to build
 ------------
 Just run provided ant script by following command line:
-```ant /release distr```
+```
+ant /release distr
+```
 It produces ready-to-deploy war file in folder distr/war.
 
 Configuration
