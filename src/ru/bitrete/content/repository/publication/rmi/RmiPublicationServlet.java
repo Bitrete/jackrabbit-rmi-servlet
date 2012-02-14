@@ -31,7 +31,7 @@ public class RmiPublicationServlet extends GenericServlet {
 	private static final String DEFAULT_JNDI_NAME = "jcr/repository";
 	private static final String DEFAULT_RMI_SERVICE_NAME = "JackrabbitRMI";
 	private static final int DEFAULT_RMI_REGISTRY_PORT_NUMBER = 1099;
-	private static final int DEFAULT_REPOSITORY_PORT_NUMBER = 1100;
+	private static final int DEFAULT_REPOSITORY_PORT_NUMBER = 1101;
 
 	private RemoteRepository remoteRepository;
 	private String rmiServiceName;
@@ -49,8 +49,10 @@ public class RmiPublicationServlet extends GenericServlet {
 
 		rmiServiceName = getRmiServiceName(config);
 		String repositoryName = getRepositoryJndiName(config);
-		int rmiPortNumber = getPortNumber(config, RMI_REGISTRY_PORT_PARAMETER, DEFAULT_RMI_REGISTRY_PORT_NUMBER);
-		int repositoryPortNumber = getPortNumber(config, REPOSITORY_PORT_PARAMETER, DEFAULT_REPOSITORY_PORT_NUMBER);
+		int rmiPortNumber = getPortNumber(config, RMI_REGISTRY_PORT_PARAMETER, 
+				DEFAULT_RMI_REGISTRY_PORT_NUMBER);
+		int repositoryPortNumber = getPortNumber(config, REPOSITORY_PORT_PARAMETER, 
+				DEFAULT_REPOSITORY_PORT_NUMBER);
 		
 		log(String.format("Starting servlet on '%s' for repository '%s'", 
 				rmiServiceName, repositoryName));
@@ -69,11 +71,11 @@ public class RmiPublicationServlet extends GenericServlet {
 			
 			log("Remote repository instance created");
 			
-			rmiRegistry = createOrGetRegistry(rmiPortNumber);
+			rmiRegistry = getOrCreateRegistry(rmiPortNumber);
 			if (rmiRegistry == null)
 				throw new IllegalStateException("Failed to get RMI registry, see log for details");
 			
-			log("RMI registry created");
+			log("RMI registry obtained");
 			
 			rmiRegistry.rebind(rmiServiceName, remoteRepository);
 			
@@ -89,12 +91,18 @@ public class RmiPublicationServlet extends GenericServlet {
 
 	@Override
 	public void destroy() {
+		log("Finalizing RMI Publisher servlet");
 		try {
 			if (rmiRegistry != null) {
 				rmiRegistry.unbind(rmiServiceName);
 				UnicastRemoteObject.unexportObject(remoteRepository, true);
-				UnicastRemoteObject.unexportObject(rmiRegistry, true);
-				log("RMI registry closed");
+				if (rmiRegistry.list().length == 0) {
+					UnicastRemoteObject.unexportObject(rmiRegistry, true);
+					log("RMI registry closed");
+				}
+				else {
+					log("RMI registry still holds objects, leave it alone");
+				}
 			}
 		}
 		catch (Exception ex) {
@@ -104,21 +112,22 @@ public class RmiPublicationServlet extends GenericServlet {
 		super.destroy();
 	}
 
-	private Registry createOrGetRegistry(int rmiPortNumber) {
+	private Registry getOrCreateRegistry(int rmiPortNumber) {
 		Registry result = null;
+		
 		try {
-			result = LocateRegistry.createRegistry(rmiPortNumber);
-		}
-		catch (RemoteException exception) {
-			log(String.format("Failed to create RMI registry on port %d", 
-					rmiPortNumber), exception);
-			
+			result = LocateRegistry.getRegistry(rmiPortNumber);
+		} 
+		catch (RemoteException ex) {
+			log(String.format(
+					"Failed to get RMI registry on port %d; Trying to create local RMI registry",
+					rmiPortNumber));
 			try {
-				result = LocateRegistry.getRegistry(rmiPortNumber);
-			}
-			catch (RemoteException ex) {
-				log(String.format("Failed to get reference to remote RMI registry on port %d", 
-						rmiPortNumber));
+				result = LocateRegistry.createRegistry(rmiPortNumber);
+			} 
+			catch (RemoteException exception) {
+				log(String.format("Failed to create RMI registry on port %d", 
+						rmiPortNumber), exception);
 			}
 		}
 		

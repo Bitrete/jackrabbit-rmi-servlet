@@ -23,7 +23,7 @@
 		</init-param>
 		<init-param>
 			<param-name>repository-port</param-name>
-			<param-value>1100</param-value>
+			<param-value>1101</param-value>
 			<description>RMI port number on which RemoteRepository is published</description>
 		</init-param>
 				<load-on-startup>2</load-on-startup>
