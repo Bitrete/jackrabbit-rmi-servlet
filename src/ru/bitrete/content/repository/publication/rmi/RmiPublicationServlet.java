@@ -37,6 +37,7 @@ public class RmiPublicationServlet extends GenericServlet {
 	private String rmiServiceName;
 
 	private Registry rmiRegistry;
+	private boolean localRegistryInUse;
 
 	@Override
 	public void service(ServletRequest request, ServletResponse response)
@@ -68,17 +69,13 @@ public class RmiPublicationServlet extends GenericServlet {
 			factory.setPortNumber(repositoryPortNumber);
 			
 			remoteRepository = factory.getRemoteRepository(repository);
-			
 			log("Remote repository instance created");
 			
-			rmiRegistry = getOrCreateRegistry(rmiPortNumber);
-			if (rmiRegistry == null)
-				throw new IllegalStateException("Failed to get RMI registry, see log for details");
+			rmiRegistry = createOrGetRegistry(rmiPortNumber);
 			
-			log("RMI registry obtained");
+			log("RMI registry obtained. Binding...");
 			
 			rmiRegistry.rebind(rmiServiceName, remoteRepository);
-			
 			log(String.format("Remote repository registered on '%s'", rmiServiceName));
 		}
 		catch (NamingException ex) {
@@ -95,39 +92,51 @@ public class RmiPublicationServlet extends GenericServlet {
 		try {
 			if (rmiRegistry != null) {
 				rmiRegistry.unbind(rmiServiceName);
+				
+				log("Removing remote repository from RMI infrastructure");
 				UnicastRemoteObject.unexportObject(remoteRepository, true);
-				if (rmiRegistry.list().length == 0) {
-					UnicastRemoteObject.unexportObject(rmiRegistry, true);
-					log("RMI registry closed");
-				}
-				else {
-					log("RMI registry still holds objects, leave it alone");
+				
+				remoteRepository = null;
+				System.gc();
+				
+				log("Remote repository unbinded and removed");
+				if (localRegistryInUse) {
+					if (rmiRegistry.list().length == 0) {
+						UnicastRemoteObject.unexportObject(rmiRegistry, true);
+						log("Local RMI registry was closed");
+					}
+					else {
+						log("RMI registry still holds objects, leave it alone");
+					}
 				}
 			}
 		}
 		catch (Exception ex) {
-			this.log(String.format("Failed to unbind service '%s'", rmiServiceName), ex);
+			log(String.format("Failed to unbind service '%s'", rmiServiceName), ex);
 		}
 		
 		super.destroy();
 	}
 
-	private Registry getOrCreateRegistry(int rmiPortNumber) {
+	private Registry createOrGetRegistry(int rmiPortNumber) {
 		Registry result = null;
 		
 		try {
-			result = LocateRegistry.getRegistry(rmiPortNumber);
+			result = LocateRegistry.createRegistry(rmiPortNumber);
+			localRegistryInUse = true;
 		} 
 		catch (RemoteException ex) {
 			log(String.format(
-					"Failed to get RMI registry on port %d; Trying to create local RMI registry",
+					"Failed to create RMI registry on port %d; Trying to get existing RMI registry",
 					rmiPortNumber));
 			try {
-				result = LocateRegistry.createRegistry(rmiPortNumber);
+				result = LocateRegistry.getRegistry(rmiPortNumber);
 			} 
 			catch (RemoteException exception) {
-				log(String.format("Failed to create RMI registry on port %d", 
+				log(String.format("Failed to get RMI registry on port %d", 
 						rmiPortNumber), exception);
+				
+				throw new IllegalStateException("Failed to get RMI registry, see log for details");
 			}
 		}
 		
