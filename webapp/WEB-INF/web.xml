@@ -4,16 +4,16 @@
 	<display-name>Jackrabbit repository RMI publisher</display-name>
 	<servlet>
 		<servlet-name>JackrabbitRmiPublisher</servlet-name>
-		<description>Servlet publishes via RMI Jackrabbit repository instance deployed as shared resource (deployment Model 2)</description>
+		<description>Servlet publishes via RMI Jackrabbit repository instance deployed in the same servlet</description>
 		<servlet-class>ru.bitrete.content.repository.publication.rmi.RmiPublicationServlet</servlet-class>
 		<init-param>
-			<param-name>repository-jndi-name</param-name>
-			<param-value>jcr/repository</param-value>
-			<description>Global repository name to search in JNDI context</description>
+			<param-name>repository-servlet-name</param-name>
+			<param-value>/RepositoryService</param-value>
+			<description>Servlet name to search in servlet context</description>
 		</init-param>
 		<init-param>
 			<param-name>rmi-service-name</param-name>
-			<param-value>JackrabbitRMI</param-value>
+			<param-value>jackrabbit.repository</param-value>
 			<description>Service name under which RemoteRepository instance is registered</description>
 		</init-param>
 		<init-param>
@@ -26,7 +26,7 @@
 			<param-value>1101</param-value>
 			<description>RMI port number on which RemoteRepository is published</description>
 		</init-param>
-				<load-on-startup>2</load-on-startup>
+		<load-on-startup>2</load-on-startup>
 	</servlet>
 	<servlet-mapping>
 		<servlet-name>JackrabbitRmiPublisher</servlet-name>

@@ -7,11 +7,9 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
 import javax.jcr.Repository;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
 import javax.servlet.GenericServlet;
 import javax.servlet.ServletConfig;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
@@ -23,13 +21,13 @@ public class RmiPublicationServlet extends GenericServlet {
 
 	private static final long serialVersionUID = -3007803818617523652L;
 	
-	private static final String REPOSITORY_JNDI_NAME_PARAMETER = "repository-jndi-name";
+	private static final String REPOSITORY_WEBAPP_NAME_PARAMETER = "repository-servlet-name";
 	private static final String RMI_SERVICE_NAME_PARAMETER = "rmi-service-name";
 	private static final String RMI_REGISTRY_PORT_PARAMETER = "rmi-registry-port";
 	private static final String REPOSITORY_PORT_PARAMETER = "repository-port";
 
-	private static final String DEFAULT_JNDI_NAME = "jcr/repository";
-	private static final String DEFAULT_RMI_SERVICE_NAME = "JackrabbitRMI";
+	private static final String DEFAULT_WEBAPP_NAME = "/RepositoryService";
+	private static final String DEFAULT_RMI_SERVICE_NAME = "jackrabbit.repository";
 	private static final int DEFAULT_RMI_REGISTRY_PORT_NUMBER = 1099;
 	private static final int DEFAULT_REPOSITORY_PORT_NUMBER = 1101;
 
@@ -49,26 +47,47 @@ public class RmiPublicationServlet extends GenericServlet {
 		super.init(config);
 
 		rmiServiceName = getRmiServiceName(config);
-		String repositoryName = getRepositoryJndiName(config);
+		String webappName = getRepositoryWebappName(config);
 		int rmiPortNumber = getPortNumber(config, RMI_REGISTRY_PORT_PARAMETER, 
 				DEFAULT_RMI_REGISTRY_PORT_NUMBER);
 		int repositoryPortNumber = getPortNumber(config, REPOSITORY_PORT_PARAMETER, 
 				DEFAULT_REPOSITORY_PORT_NUMBER);
 		
-		log(String.format("Starting servlet on '%s' for repository '%s'", 
-				rmiServiceName, repositoryName));
+		log(String.format("Starting servlet on '%s' for Jackrabbit Webapp '%s'", 
+				rmiServiceName, webappName));
 		
 		try {
-			InitialContext context = new InitialContext();
-			Context environment = (Context) context.lookup("java:comp/env");
-
-			Repository repository = (Repository) environment
-					.lookup(repositoryName);
+			ServletContext jackrabbitWebappContext = 
+					getServletContext().getContext(webappName);
+			if (jackrabbitWebappContext == null) {
+				String message = 
+						String.format("Unable to get context of '%s' web application", webappName);
+				log(message);
+				
+				throw new IllegalStateException(message);
+			}
+			
+			String repositoryClassName = Repository.class.getName();
+			Repository repository = 
+					(Repository) jackrabbitWebappContext.getAttribute(repositoryClassName);
+			if (repository == null) {
+				String message = 
+						String.format("Failed to obtain instance of '%s'", repositoryClassName);
+				log(message);
+				
+				throw new IllegalStateException(message);
+			}
 
 			ServerAdapterFactory factory = new ServerAdapterFactory();
 			factory.setPortNumber(repositoryPortNumber);
 			
 			remoteRepository = factory.getRemoteRepository(repository);
+			if (remoteRepository == null) {
+				String message = "Failed to obtain remote repository";
+				log(message);
+				
+				throw new IllegalStateException(message);
+			}
 			log("Remote repository instance created");
 			
 			rmiRegistry = createOrGetRegistry(rmiPortNumber);
@@ -77,9 +96,6 @@ public class RmiPublicationServlet extends GenericServlet {
 			
 			rmiRegistry.rebind(rmiServiceName, remoteRepository);
 			log(String.format("Remote repository registered on '%s'", rmiServiceName));
-		}
-		catch (NamingException ex) {
-			log("Naming context access failure", ex);
 		}
 		catch (RemoteException ex) {
 			log("Failed to create remote repository", ex);
@@ -148,8 +164,8 @@ public class RmiPublicationServlet extends GenericServlet {
 				Integer.toString(defaultValue)));
 	}
 
-	private String getRepositoryJndiName(ServletConfig config) {
-		return getContextParameter(config, REPOSITORY_JNDI_NAME_PARAMETER, DEFAULT_JNDI_NAME);
+	private String getRepositoryWebappName(ServletConfig config) {
+		return getContextParameter(config, REPOSITORY_WEBAPP_NAME_PARAMETER, DEFAULT_WEBAPP_NAME);
 	}
 	
 	private String getRmiServiceName(ServletConfig config) {

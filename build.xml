@@ -66,20 +66,16 @@
 		</copy>
 	</target>
 	
-	<target name="war" depends="set-version, compile" description="Create War files">
+	<target name="jar" depends="set-version, compile" description="Create Jar files">
 		<echo message="version=${version}${line.separator}" file="${project.classes.build}/module.properties" append="true"/>
 		<echo message="date=${pubdate}${line.separator}" file="${project.classes.build}/module.properties" append="true"/>
-
-		<mkdir dir="${wars}" />
-
-		<war destfile="${wars}/${result.name}.${result.ext}" webxml="${webapp}/WEB-INF/web.xml">
-			<classes dir="${project.classes.build}"/>
-		</war>
+		<mkdir dir="${jars}" />
+		<jar destfile="${jars}/${result.name}.${result.ext}" basedir="${project.classes.build}"/>
 	</target>
 
-	<target name="distr" depends="war">
+	<target name="distr" depends="jar">
 		<mkdir dir="${distr}"/>
-		<mkdir dir="${distr}/war"/>
-		<copy file="${wars}/${result.name}.${result.ext}" tofile="${distr}/war/${result.name}-${version}.${result.ext}"/>
+		<mkdir dir="${distr}/jar"/>
+		<copy file="${jars}/${result.name}.${result.ext}" tofile="${distr}/jar/${result.name}-${version}.${result.ext}"/>
 	</target>
 </project>
